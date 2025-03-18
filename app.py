@@ -6,24 +6,28 @@ import os
 app = Flask(__name__)
 
 UPLOAD_FOLDER = 'static/images'
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Función para transformar colores (ejemplo: azul a verde)
-def transformar_colores(image_path):
+# Función para transformar colores
+def transformar_colores(image_path, old_color, new_color):
     image = cv2.imread(image_path)
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-    # Definimos los colores que queremos cambiar (azul a verde)
-    lower_blue = np.array([100, 50, 50])
-    upper_blue = np.array([140, 255, 255])
-
-    # Detectamos el color azul
-    mask = cv2.inRange(hsv, lower_blue, upper_blue)
-
-    # Cambiamos el color azul a verde
-    image[mask > 0] = [0, 255, 0]
-
-    # Guardamos la nueva imagen
+    # Definir el rango de color a cambiar
+    lower_bound = np.array(old_color[:3])
+    upper_bound = np.array(old_color[3:])
+    
+    # Crear máscara para detectar el color seleccionado
+    mask = cv2.inRange(hsv, lower_bound, upper_bound)
+    
+    # Suavizar la máscara para mejorar la detección
+    mask = cv2.GaussianBlur(mask, (5, 5), 0)
+    
+    # Cambiar el color detectado al nuevo color
+    image[mask > 0] = new_color
+    
+    # Guardar la imagen transformada
     output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'output.jpg')
     cv2.imwrite(output_path, image)
     return output_path
@@ -31,18 +35,29 @@ def transformar_colores(image_path):
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        # Guardar la imagen cargada
         file = request.files['file']
         if file:
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'input.jpg')
             file.save(filepath)
-
-            # Aplicar la transformación
-            output_path = transformar_colores(filepath)
-
-            # Mostrar la imagen transformada
+            
+            # Obtener colores del formulario
+            old_h_min = int(request.form['old_h_min'])
+            old_s_min = int(request.form['old_s_min'])
+            old_v_min = int(request.form['old_v_min'])
+            old_h_max = int(request.form['old_h_max'])
+            old_s_max = int(request.form['old_s_max'])
+            old_v_max = int(request.form['old_v_max'])
+            
+            new_r = int(request.form['new_r'])
+            new_g = int(request.form['new_g'])
+            new_b = int(request.form['new_b'])
+            
+            old_color = [old_h_min, old_s_min, old_v_min, old_h_max, old_s_max, old_v_max]
+            new_color = [new_b, new_g, new_r]
+            
+            output_path = transformar_colores(filepath, old_color, new_color)
             return render_template('result.html', output_image='images/output.jpg')
-
+    
     return render_template('index.html')
 
 @app.route('/static/images/<filename>')

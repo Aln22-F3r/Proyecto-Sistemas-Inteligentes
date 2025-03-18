@@ -11,9 +11,57 @@
         <h1 class="text-center">Subir Imagen para Transformar Colores</h1>
         <form action="/" method="post" enctype="multipart/form-data">
             <div class="mb-3">
-                <input type="file" name="file" class="form-control">
+                <label class="form-label">Selecciona una imagen:</label>
+                <input type="file" name="file" class="form-control" required>
             </div>
-            <button type="submit" class="btn btn-primary">Transformar Imagen</button>
+            
+            <h3>Color a Reemplazar (HSV)</h3>
+            <div class="row">
+                <div class="col">
+                    <label>H Mínimo:</label>
+                    <input type="number" name="old_h_min" class="form-control" min="0" max="179" required>
+                </div>
+                <div class="col">
+                    <label>S Mínimo:</label>
+                    <input type="number" name="old_s_min" class="form-control" min="0" max="255" required>
+                </div>
+                <div class="col">
+                    <label>V Mínimo:</label>
+                    <input type="number" name="old_v_min" class="form-control" min="0" max="255" required>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col">
+                    <label>H Máximo:</label>
+                    <input type="number" name="old_h_max" class="form-control" min="0" max="179" required>
+                </div>
+                <div class="col">
+                    <label>S Máximo:</label>
+                    <input type="number" name="old_s_max" class="form-control" min="0" max="255" required>
+                </div>
+                <div class="col">
+                    <label>V Máximo:</label>
+                    <input type="number" name="old_v_max" class="form-control" min="0" max="255" required>
+                </div>
+            </div>
+            
+            <h3 class="mt-3">Nuevo Color (RGB)</h3>
+            <div class="row">
+                <div class="col">
+                    <label>Rojo:</label>
+                    <input type="number" name="new_r" class="form-control" min="0" max="255" required>
+                </div>
+                <div class="col">
+                    <label>Verde:</label>
+                    <input type="number" name="new_g" class="form-control" min="0" max="255" required>
+                </div>
+                <div class="col">
+                    <label>Azul:</label>
+                    <input type="number" name="new_b" class="form-control" min="0" max="255" required>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary mt-3">Transformar Imagen</button>
         </form>
     </div>
 </body>

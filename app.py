@@ -9,27 +9,44 @@ UPLOAD_FOLDER = 'static/images'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Función para transformar colores
-def transformar_colores(image_path, old_color, new_color):
-    image = cv2.imread(image_path)
+def hex_to_rgb(hex_color):
+    hex_color = hex_color.lstrip('#')
+    return [int(hex_color[i:i+2], 16) for i in (0, 2, 4)]
+
+def aplicar_filtro_color(image, old_rgb, new_color, tolerance=30):
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
-    # Definir el rango de color a cambiar
-    lower_bound = np.array(old_color[:3])
-    upper_bound = np.array(old_color[3:])
+    # Convertir el color objetivo a HSV
+    color_hsv = cv2.cvtColor(np.uint8([[old_rgb[::-1]]]), cv2.COLOR_BGR2HSV)[0][0]
     
-    # Crear máscara para detectar el color seleccionado
+    # Crear rangos con tolerancia
+    lower_bound = np.clip(color_hsv - np.array([tolerance, 50, 50]), 0, 255)
+    upper_bound = np.clip(color_hsv + np.array([tolerance, 50, 50]), 0, 255)
+    
+    # Crear una máscara de todos los colores dentro del rango
     mask = cv2.inRange(hsv, lower_bound, upper_bound)
+
+    # Para suavizar, aplicamos un difusor sobre la máscara
+    blurred_mask = cv2.GaussianBlur(mask, (15, 15), 0)
+
+    # Crear un nuevo color usando el color nuevo (solo cambiamos el matiz)
+    new_color_hsv = cv2.cvtColor(np.uint8([[new_color[::-1]]]), cv2.COLOR_BGR2HSV)[0][0]
     
-    # Suavizar la máscara para mejorar la detección
-    mask = cv2.GaussianBlur(mask, (5, 5), 0)
-    
-    # Cambiar el color detectado al nuevo color
-    image[mask > 0] = new_color
-    
-    # Guardar la imagen transformada
+    # Asegurarnos de que la saturación y luminosidad no cambien
+    hsv[blurred_mask > 0, 0] = new_color_hsv[0]
+
+    # Convertimos de nuevo a BGR para obtener la imagen procesada
+    result = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    return result
+
+def transformar_colores(image_path, old_rgb, new_color, tolerance=30):
+    image = cv2.imread(image_path)
+
+    # Aplicamos el filtro para cambiar el color de forma gradual
+    result = aplicar_filtro_color(image, old_rgb, new_color, tolerance)
+
     output_path = os.path.join(app.config['UPLOAD_FOLDER'], 'output.jpg')
-    cv2.imwrite(output_path, image)
+    cv2.imwrite(output_path, result)
     return output_path
 
 @app.route('/', methods=['GET', 'POST'])
@@ -39,25 +56,17 @@ def index():
         if file:
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], 'input.jpg')
             file.save(filepath)
-            
-            # Obtener colores del formulario
-            old_h_min = int(request.form['old_h_min'])
-            old_s_min = int(request.form['old_s_min'])
-            old_v_min = int(request.form['old_v_min'])
-            old_h_max = int(request.form['old_h_max'])
-            old_s_max = int(request.form['old_s_max'])
-            old_v_max = int(request.form['old_v_max'])
-            
-            new_r = int(request.form['new_r'])
-            new_g = int(request.form['new_g'])
-            new_b = int(request.form['new_b'])
-            
-            old_color = [old_h_min, old_s_min, old_v_min, old_h_max, old_s_max, old_v_max]
-            new_color = [new_b, new_g, new_r]
-            
-            output_path = transformar_colores(filepath, old_color, new_color)
+
+            # Leer colores desde el formulario
+            old_rgb = hex_to_rgb(request.form['old_rgb_min'])
+            new_color = hex_to_rgb(request.form['new_rgb'])
+
+            # Leer el valor de la tolerancia
+            tolerance = int(request.form['tolerance'])
+
+            output_path = transformar_colores(filepath, old_rgb, new_color, tolerance)
             return render_template('result.html', output_image='images/output.jpg')
-    
+
     return render_template('index.html')
 
 @app.route('/static/images/<filename>')

@@ -2,8 +2,9 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Transformación de Colores</title>
+    <title>Magic Color</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
             background: #f5f7fa;
@@ -18,9 +19,21 @@
             margin-top: 10px;
             border-radius: 10px;
             border: 1px solid #ccc;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+        .preview:hover {
+            transform: scale(1.02);
+            opacity: 0.95;
         }
         .form-section {
             margin-bottom: 20px;
+            position: relative;
+        }
+        .form-section h3 .info-icon,
+        .form-section label .info-icon {
+            cursor: pointer;
+            color: #17a2b8;
+            margin-left: 5px;
         }
         .card {
             border: none;
@@ -29,23 +42,33 @@
         h1, h3 {
             color: #333;
         }
+        .btn:disabled {
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
     <div class="container mt-5">
         <div class="card p-4">
-            <h1 class="text-center mb-4">Transformación de Colores en Imágenes</h1>
+            <h1 class="text-center mb-4">Magic Color</h1>
+            <h2 class="text-center mb-3">Transformación de Colores en Imágenes</h2>
             <p class="text-center text-muted">Esta herramienta te permite reemplazar colores dentro de una imagen seleccionada utilizando un rango de color y un nivel de tolerancia ajustable.</p>
             
-            <form action="/" method="post" enctype="multipart/form-data">
+            <form id="colorForm" action="/" method="post" enctype="multipart/form-data">
                 <div class="form-section">
-                    <label class="form-label fw-bold">Selecciona una imagen:</label>
+                    <label class="form-label fw-bold">
+                        Selecciona una imagen: 
+                        <i class="bi bi-question-circle-fill info-icon" data-bs-toggle="tooltip" title="Selecciona una imagen desde tu dispositivo para procesar."></i>
+                    </label>
                     <input type="file" name="file" class="form-control" accept="image/*" required onchange="previewImage(event)">
                     <img id="imagePreview" class="preview" src="#" alt="Vista previa" style="display: none;">
                 </div>
 
                 <div class="form-section">
-                    <h3 class="h5">Color a Reemplazar (Rango RGB)</h3>
+                    <h3 class="h5">
+                        Color a Reemplazar (Rango RGB)
+                        <i class="bi bi-question-circle-fill info-icon" data-bs-toggle="tooltip" title="Define el rango de color que deseas cambiar en la imagen."></i>
+                    </h3>
                     <div class="row">
                         <div class="col">
                             <label>Color Mínimo:</label>
@@ -60,14 +83,19 @@
                 </div>
 
                 <div class="form-section">
-                    <h3 class="h5">Nuevo Color (RGB)</h3>
-                    <label>Nuevo Color:</label>
+                    <h3 class="h5">
+                        Nuevo Color (RGB)
+                        <i class="bi bi-question-circle-fill info-icon" data-bs-toggle="tooltip" title="Este es el color que reemplazará al rango de color original."></i>
+                    </h3>
                     <input type="color" name="new_rgb" class="form-control form-control-color" required>
                     <small class="text-muted">Este será el color que reemplazará al rango seleccionado.</small>
                 </div>
 
                 <div class="form-section">
-                    <h3 class="h5">Tolerancia</h3>
+                    <h3 class="h5">
+                        Tolerancia
+                        <i class="bi bi-question-circle-fill info-icon" data-bs-toggle="tooltip" title="A mayor tolerancia, se permite mayor variación en los colores detectados."></i>
+                    </h3>
                     <label for="tolerance">Ajusta la tolerancia:</label>
                     <input type="range" id="tolerance" name="tolerance" min="10" max="100" value="30" class="form-range">
                     <p class="text-muted">Valor actual: <span id="toleranceValue">30</span></p>
@@ -75,12 +103,17 @@
                 </div>
 
                 <div class="text-center">
-                    <button type="submit" class="btn btn-success btn-lg mt-3">Transformar Imagen</button>
+                    <button id="submitButton" type="submit" class="btn btn-success btn-lg mt-3">
+                        <span id="spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                        Transformar Imagen
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function previewImage(event) {
             const reader = new FileReader();
@@ -95,6 +128,42 @@
         document.getElementById('tolerance').addEventListener('input', function () {
             document.getElementById('toleranceValue').innerText = this.value;
         });
+
+        // Tooltip Bootstrap
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+            new bootstrap.Tooltip(el);
+        });
+
+        // Indicador de carga al enviar el formulario
+        document.getElementById('colorForm').addEventListener('submit', function () {
+            const spinner = document.getElementById('spinner');
+            const button = document.getElementById('submitButton');
+            spinner.classList.remove('d-none');
+            button.disabled = true;
+        });
+
+        // Función para leer el archivo y mostrar la previsualización
+    function previewImage(event) {
+        const reader = new FileReader();
+        reader.onload = function () {
+            const preview = document.getElementById('imagePreview');
+            preview.src = reader.result;
+            preview.style.display = 'block';
+            // Guardar la imagen en sessionStorage
+            sessionStorage.setItem('previewImage', reader.result);
+        };
+        reader.readAsDataURL(event.target.files[0]);
+    }
+
+    // Cuando se carga la página, si hay una imagen en sessionStorage, se carga en la previsualización
+    window.addEventListener('DOMContentLoaded', function () {
+        const storedPreview = sessionStorage.getItem('previewImage');
+        if (storedPreview) {
+            const preview = document.getElementById('imagePreview');
+            preview.src = storedPreview;
+            preview.style.display = 'block';
+        }
+    });
     </script>
 </body>
 </html>
